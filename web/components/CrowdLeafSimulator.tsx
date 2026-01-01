@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { runSimulation, SimulationMetrics, Agent, AirportLayout, Node } from '@/lib/simulation';
+import { runSimulation, SimulationMetrics, Agent, AirportLayout, Wall, Gate, Exit } from '@/lib/simulation';
 
 interface Props {
   airport: string;
@@ -80,58 +80,6 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
     };
   }, [airport, agentCount, isRunning]);
 
-  const drawNode = (
-    ctx: CanvasRenderingContext2D,
-    node: Node,
-    offsetX: number
-  ) => {
-    const x = offsetX + node.x;
-    const y = node.y;
-
-    // Node colors based on type
-    switch (node.type) {
-      case 'gate':
-        ctx.fillStyle = '#3b82f6'; // Blue
-        ctx.strokeStyle = '#1d4ed8';
-        break;
-      case 'corridor':
-        ctx.fillStyle = '#d1d5db'; // Gray
-        ctx.strokeStyle = '#9ca3af';
-        break;
-      case 'checkpoint':
-        ctx.fillStyle = '#f59e0b'; // Orange
-        ctx.strokeStyle = '#d97706';
-        break;
-      case 'exit':
-        ctx.fillStyle = '#10b981'; // Green
-        ctx.strokeStyle = '#059669';
-        break;
-    }
-
-    // Draw node
-    ctx.beginPath();
-    if (node.type === 'exit') {
-      // Exits are larger rectangles
-      ctx.fillRect(x - 15, y - 10, 30, 20);
-      ctx.strokeRect(x - 15, y - 10, 30, 20);
-    } else if (node.type === 'gate') {
-      // Gates are small squares
-      ctx.fillRect(x - 8, y - 8, 16, 16);
-      ctx.strokeRect(x - 8, y - 8, 16, 16);
-    } else {
-      // Corridors and checkpoints are circles
-      ctx.arc(x, y, node.type === 'checkpoint' ? 12 : 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    // Label
-    ctx.fillStyle = '#000';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(node.id, x, y + 25);
-  };
-
   const drawSimulation = (
     ctx: CanvasRenderingContext2D,
     layout: AirportLayout,
@@ -139,70 +87,106 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
     offsetX: number,
     isCrowdLeaf: boolean
   ) => {
-    // Draw edges (pathways)
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 3;
-    layout.edges.forEach(edge => {
-      const fromNode = layout.nodes.find(n => n.id === edge.from);
-      const toNode = layout.nodes.find(n => n.id === edge.to);
-      if (fromNode && toNode) {
-        ctx.beginPath();
-        ctx.moveTo(offsetX + fromNode.x, fromNode.y);
-        ctx.lineTo(offsetX + toNode.x, toNode.y);
-        ctx.stroke();
-      }
+    // Draw floor (open space)
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(offsetX, 0, layout.width, layout.height);
+
+    // Draw gate areas (light blue)
+    ctx.fillStyle = '#e0f2fe';
+    layout.gates.forEach(gate => {
+      ctx.fillRect(offsetX + gate.x, gate.y, gate.width, gate.height);
     });
 
-    // Draw nodes (gates, corridors, checkpoints, exits)
-    layout.nodes.forEach(node => {
-      drawNode(ctx, node, offsetX);
+    // Draw exit areas (light green)
+    ctx.fillStyle = '#d1fae5';
+    layout.exits.forEach(exit => {
+      ctx.fillRect(offsetX + exit.x, exit.y, exit.width, exit.height);
     });
 
-    // Draw agents
+    // Draw walls (dark gray)
+    ctx.fillStyle = '#374151';
+    layout.walls.forEach(wall => {
+      ctx.fillRect(offsetX + wall.x, wall.y, wall.width, wall.height);
+    });
+
+    // Draw gate labels
+    ctx.fillStyle = '#1e40af';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    layout.gates.forEach(gate => {
+      ctx.fillText(
+        gate.label,
+        offsetX + gate.x + gate.width / 2,
+        gate.y + gate.height / 2 + 4
+      );
+    });
+
+    // Draw exit labels
+    ctx.fillStyle = '#047857';
+    ctx.font = 'bold 14px sans-serif';
+    layout.exits.forEach(exit => {
+      ctx.fillText(
+        exit.label,
+        offsetX + exit.x + exit.width / 2,
+        exit.y + exit.height / 2 + 5
+      );
+    });
+
+    // Draw agents with collision
     const agentColor = isCrowdLeaf ? '#22c55e' : '#ef4444';
-    const injuredColor = '#f97316'; // Orange
+    const injuredColor = '#f97316';
 
     agents.forEach(agent => {
-      if (agent.isEvacuated) return; // Don't draw evacuated agents
+      if (agent.isEvacuated) return;
 
       const x = offsetX + agent.x;
       const y = agent.y;
 
+      // Draw agent circle
       ctx.fillStyle = agent.isInjured ? injuredColor : agentColor;
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Add outline for visibility
+      // White outline for visibility
       ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.5;
       ctx.stroke();
     });
 
-    // Draw legend
-    const legendY = 50;
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'left';
+    // Draw crowding visualization (density heatmap)
+    const gridSize = 40;
+    const gridCols = Math.ceil(layout.width / gridSize);
+    const gridRows = Math.ceil(layout.height / gridSize);
+    const densityGrid: number[][] = Array(gridRows).fill(0).map(() => Array(gridCols).fill(0));
 
-    // Gates
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(offsetX + 10, legendY, 12, 12);
-    ctx.fillStyle = '#000';
-    ctx.fillText('Gates', offsetX + 26, legendY + 10);
+    // Count agents in each grid cell
+    agents.forEach(agent => {
+      if (!agent.isEvacuated) {
+        const gridX = Math.floor(agent.x / gridSize);
+        const gridY = Math.floor(agent.y / gridSize);
+        if (gridX >= 0 && gridX < gridCols && gridY >= 0 && gridY < gridRows) {
+          densityGrid[gridY][gridX]++;
+        }
+      }
+    });
 
-    // Exits
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(offsetX + 10, legendY + 20, 12, 12);
-    ctx.fillStyle = '#000';
-    ctx.fillText('Exits', offsetX + 26, legendY + 30);
-
-    // Checkpoints
-    ctx.fillStyle = '#f59e0b';
-    ctx.beginPath();
-    ctx.arc(offsetX + 16, legendY + 46, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.fillText('Security', offsetX + 26, legendY + 50);
+    // Draw crowding overlay
+    for (let row = 0; row < gridRows; row++) {
+      for (let col = 0; col < gridCols; col++) {
+        const count = densityGrid[row][col];
+        if (count > 5) {
+          const alpha = Math.min(count / 20, 0.4);
+          ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+          ctx.fillRect(
+            offsetX + col * gridSize,
+            row * gridSize,
+            gridSize,
+            gridSize
+          );
+        }
+      }
+    }
   };
 
   return (
