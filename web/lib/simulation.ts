@@ -38,6 +38,9 @@ export interface Exit {
   width: number;
   height: number;
   label: string;
+  state: 'open' | 'closing' | 'closed' | 'reopening'; // Mimosa leaf states
+  crowdingLevel: number; // Stimulus intensity
+  recoveryTimer: number; // Time until can reopen
 }
 
 export interface AirportLayout {
@@ -98,9 +101,9 @@ const airportLayouts: Record<string, AirportLayout> = {
       { x: 455, y: 15, width: 130, height: 100, label: 'G5' },
     ],
     exits: [
-      { x: 50, y: 450, width: 120, height: 40, label: 'Exit 1' },
-      { x: 240, y: 450, width: 120, height: 40, label: 'Exit 2' },
-      { x: 430, y: 450, width: 120, height: 40, label: 'Exit 3' },
+      { x: 50, y: 450, width: 120, height: 40, label: 'Exit 1', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 240, y: 450, width: 120, height: 40, label: 'Exit 2', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 430, y: 450, width: 120, height: 40, label: 'Exit 3', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
     ],
     spawnAreas: [
       { x: 20, y: 30, width: 90, height: 80 },
@@ -152,8 +155,8 @@ const airportLayouts: Record<string, AirportLayout> = {
       { x: 495, y: 15, width: 90, height: 90, label: 'A7' },
     ],
     exits: [
-      { x: 100, y: 450, width: 150, height: 40, label: 'Exit A' },
-      { x: 350, y: 450, width: 150, height: 40, label: 'Exit B' },
+      { x: 100, y: 450, width: 150, height: 40, label: 'Exit A', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 350, y: 450, width: 150, height: 40, label: 'Exit B', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
     ],
     spawnAreas: [
       { x: 20, y: 20, width: 65, height: 80 },
@@ -205,8 +208,8 @@ const airportLayouts: Record<string, AirportLayout> = {
       { x: 435, y: 105, width: 150, height: 60, label: 'D8' },
     ],
     exits: [
-      { x: 120, y: 450, width: 160, height: 40, label: 'Exit 1' },
-      { x: 320, y: 450, width: 160, height: 40, label: 'Exit 2' },
+      { x: 120, y: 450, width: 160, height: 40, label: 'Exit 1', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 320, y: 450, width: 160, height: 40, label: 'Exit 2', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
     ],
     spawnAreas: [
       { x: 20, y: 20, width: 120, height: 50 },
@@ -255,8 +258,8 @@ const airportLayouts: Record<string, AirportLayout> = {
       { x: 465, y: 15, width: 120, height: 100, label: 'Gate 4' },
     ],
     exits: [
-      { x: 80, y: 450, width: 140, height: 40, label: 'Exit 1' },
-      { x: 380, y: 450, width: 140, height: 40, label: 'Exit 2' },
+      { x: 80, y: 450, width: 140, height: 40, label: 'Exit 1', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 380, y: 450, width: 140, height: 40, label: 'Exit 2', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
     ],
     spawnAreas: [
       { x: 20, y: 25, width: 130, height: 85 },
@@ -299,8 +302,8 @@ const airportLayouts: Record<string, AirportLayout> = {
       { x: 465, y: 15, width: 120, height: 105, label: 'Gate 4' },
     ],
     exits: [
-      { x: 110, y: 450, width: 160, height: 40, label: 'Exit 1' },
-      { x: 330, y: 450, width: 160, height: 40, label: 'Exit 2' },
+      { x: 110, y: 450, width: 160, height: 40, label: 'Exit 1', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
+      { x: 330, y: 450, width: 160, height: 40, label: 'Exit 2', state: 'open', crowdingLevel: 0, recoveryTimer: 0 },
     ],
     spawnAreas: [
       { x: 20, y: 25, width: 130, height: 90 },
@@ -346,19 +349,80 @@ function checkWallCollision(x: number, y: number, walls: Wall[], radius: number 
   return false;
 }
 
-// Check if agent is in exit area
+// Check if agent is in exit area (and exit is open)
 function isInExit(x: number, y: number, exits: Exit[]): boolean {
   for (const exit of exits) {
     if (
       x >= exit.x &&
       x <= exit.x + exit.width &&
       y >= exit.y &&
-      y <= exit.y + exit.height
+      y <= exit.y + exit.height &&
+      (exit.state === 'open' || exit.state === 'reopening')
     ) {
       return true;
     }
   }
   return false;
+}
+
+// Thigmonastic response - Mimosa pudica-inspired exit control
+function updateExitStates(layout: AirportLayout, agents: Agent[], deltaTime: number, useCrowdLeaf: boolean): void {
+  const CROWD_THRESHOLD = 15; // Critical crowd density to trigger closing
+  const RECOVERY_TIME = 5; // Seconds to recover (like Mimosa reopening)
+
+  layout.exits.forEach(exit => {
+    // Count agents near this exit (stimulus detection)
+    const nearbyAgents = agents.filter(a => {
+      if (a.isEvacuated) return false;
+      const dx = a.x - (exit.x + exit.width / 2);
+      const dy = a.y - (exit.y + exit.height / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return dist < 100; // Detection radius
+    });
+
+    exit.crowdingLevel = nearbyAgents.length;
+
+    if (!useCrowdLeaf) {
+      // Without CrowdLeaf: exits stay open (no thigmonastic response)
+      exit.state = 'open';
+      return;
+    }
+
+    // CrowdLeaf: Mimosa-like behavior
+    switch (exit.state) {
+      case 'open':
+        if (exit.crowdingLevel > CROWD_THRESHOLD) {
+          // Stimulus threshold exceeded - trigger closing!
+          exit.state = 'closing';
+          exit.recoveryTimer = RECOVERY_TIME;
+        }
+        break;
+
+      case 'closing':
+        // Transition to fully closed
+        exit.state = 'closed';
+        break;
+
+      case 'closed':
+        // Recovery timer (like Mimosa pudica slow reopening)
+        exit.recoveryTimer -= deltaTime;
+        if (exit.recoveryTimer <= 0) {
+          exit.state = 'reopening';
+        }
+        break;
+
+      case 'reopening':
+        // Check if safe to reopen
+        if (exit.crowdingLevel < CROWD_THRESHOLD * 0.5) {
+          exit.state = 'open';
+          exit.recoveryTimer = 0;
+        } else {
+          // Still too crowded, stay in reopening state
+          exit.recoveryTimer = RECOVERY_TIME * 0.3;
+        }
+        break;
+    }
+  });
 }
 
 // Get target exit for agent (CrowdLeaf redistributes, standard picks nearest)
@@ -370,30 +434,31 @@ function getTargetExit(
   time: number
 ): Exit {
   if (useCrowdLeaf) {
-    // CrowdLeaf: Timed gate control - periodically redirect to less crowded exit
-    const redirectPhase = Math.floor(time / 5) % layout.exits.length;
+    // CrowdLeaf: Avoid closed/closing exits (thigmonastic avoidance)
+    const openExits = layout.exits.filter(e => e.state === 'open' || e.state === 'reopening');
 
-    // Count agents heading to each exit
-    const exitCounts = layout.exits.map(exit => {
-      return allAgents.filter(a => {
-        const dx = a.x - (exit.x + exit.width / 2);
-        const dy = a.y - (exit.y + exit.height / 2);
-        return Math.sqrt(dx * dx + dy * dy) < 100;
-      }).length;
-    });
+    if (openExits.length === 0) {
+      // All exits closed - pick least crowded one anyway
+      let minCrowd = layout.exits[0];
+      for (const exit of layout.exits) {
+        if (exit.crowdingLevel < minCrowd.crowdingLevel) {
+          minCrowd = exit;
+        }
+      }
+      return minCrowd;
+    }
 
-    // Find least crowded exit
-    let minIndex = 0;
-    for (let i = 1; i < exitCounts.length; i++) {
-      if (exitCounts[i] < exitCounts[minIndex]) {
-        minIndex = i;
+    // Find least crowded open exit
+    let best = openExits[0];
+    for (const exit of openExits) {
+      if (exit.crowdingLevel < best.crowdingLevel) {
+        best = exit;
       }
     }
 
-    // Balance between least crowded and timed redirect
-    return Math.random() < 0.7 ? layout.exits[minIndex] : layout.exits[redirectPhase];
+    return best;
   } else {
-    // Standard: Always go to nearest exit
+    // Standard: Always go to nearest exit (ignore state)
     let nearest = layout.exits[0];
     let minDist = Infinity;
 
@@ -535,6 +600,10 @@ export function runSimulation(
   }
 
   const deltaTime = currentTime - cachedState.time;
+
+  // Update exit states (Mimosa-like thigmonastic response)
+  updateExitStates(layout, cachedState.withoutAgents, deltaTime, false);
+  updateExitStates(layout, cachedState.withAgents, deltaTime, true);
 
   // Update agents
   const withoutAgents = updateAgents(cachedState.withoutAgents, layout, false, currentTime, deltaTime);
