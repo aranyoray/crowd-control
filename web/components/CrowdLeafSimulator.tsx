@@ -121,15 +121,53 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
       );
     });
 
-    // Draw exit labels
-    ctx.fillStyle = '#047857';
-    ctx.font = 'bold 14px sans-serif';
+    // Draw exit labels and state indicators (Mimosa-like visual feedback)
     layout.exits.forEach(exit => {
-      ctx.fillText(
-        exit.label,
-        offsetX + exit.x + exit.width / 2,
-        exit.y + exit.height / 2 + 5
+      const centerX = offsetX + exit.x + exit.width / 2;
+      const centerY = exit.y + exit.height / 2;
+
+      // Draw state ring around exit (like Mimosa leaf closing)
+      ctx.lineWidth = 4;
+      switch (exit.state) {
+        case 'open':
+          ctx.strokeStyle = '#10b981'; // Green - fully open
+          break;
+        case 'closing':
+          ctx.strokeStyle = '#f59e0b'; // Orange - closing response
+          break;
+        case 'closed':
+          ctx.strokeStyle = '#ef4444'; // Red - fully closed
+          break;
+        case 'reopening':
+          ctx.strokeStyle = '#3b82f6'; // Blue - recovering
+          break;
+      }
+
+      // Pulsing effect for closing/reopening
+      const pulseRadius = (exit.state === 'closing' || exit.state === 'reopening')
+        ? Math.sin(Date.now() / 200) * 3 + 3
+        : 0;
+
+      ctx.beginPath();
+      ctx.arc(
+        centerX,
+        centerY,
+        Math.max(exit.width, exit.height) / 2 + 10 + pulseRadius,
+        0,
+        Math.PI * 2
       );
+      ctx.stroke();
+
+      // Draw exit label
+      ctx.fillStyle = exit.state === 'closed' ? '#991b1b' : '#047857';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(exit.label, centerX, centerY + 5);
+
+      // Show crowd count
+      ctx.fillStyle = '#000';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`(${exit.crowdingLevel})`, centerX, centerY + 20);
     });
 
     // Draw agents with collision
