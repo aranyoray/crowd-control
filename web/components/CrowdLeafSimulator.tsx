@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { runSimulation, SimulationMetrics } from '@/lib/simulation';
+import { runSimulation, SimulationMetrics, Agent, AirportLayout, Node } from '@/lib/simulation';
 
 interface Props {
   airport: string;
@@ -14,6 +14,7 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
   const [metricsWithout, setMetricsWithout] = useState<SimulationMetrics | null>(null);
   const [metricsWith, setMetricsWith] = useState<SimulationMetrics | null>(null);
   const animationRef = useRef<number | undefined>(undefined);
+  const [currentTime, setCurrentTime] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -22,7 +23,9 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let simulations = runSimulation(airport, agentCount);
+    // Reset simulation when airport or agent count changes
+    setCurrentTime(0);
+    let simulations = runSimulation(airport, agentCount, 0);
 
     const animate = () => {
       if (!isRunning) {
@@ -47,19 +50,21 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
       ctx.fillStyle = '#dc2626';
       ctx.textAlign = 'center';
       ctx.fillText('WITHOUT CrowdLeaf', canvas.width / 4, 30);
-      
+
       ctx.fillStyle = '#16a34a';
       ctx.fillText('WITH CrowdLeaf', (canvas.width * 3) / 4, 30);
 
       // Step simulation
-      simulations = runSimulation(airport, agentCount, simulations.time + 0.1);
-      
+      const newTime = simulations.time + 0.1;
+      simulations = runSimulation(airport, agentCount, newTime);
+      setCurrentTime(newTime);
+
       setMetricsWithout(simulations.without);
       setMetricsWith(simulations.with);
 
       // Draw visualizations
-      drawSimulation(ctx, simulations.without, 0, false);
-      drawSimulation(ctx, simulations.with, canvas.width / 2, true);
+      drawSimulation(ctx, simulations.layout, simulations.withoutAgents, 0, false);
+      drawSimulation(ctx, simulations.layout, simulations.withAgents, canvas.width / 2, true);
 
       if (simulations.time < 30) {
         animationRef.current = requestAnimationFrame(animate);
@@ -75,24 +80,129 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
     };
   }, [airport, agentCount, isRunning]);
 
+  const drawNode = (
+    ctx: CanvasRenderingContext2D,
+    node: Node,
+    offsetX: number
+  ) => {
+    const x = offsetX + node.x;
+    const y = node.y;
+
+    // Node colors based on type
+    switch (node.type) {
+      case 'gate':
+        ctx.fillStyle = '#3b82f6'; // Blue
+        ctx.strokeStyle = '#1d4ed8';
+        break;
+      case 'corridor':
+        ctx.fillStyle = '#d1d5db'; // Gray
+        ctx.strokeStyle = '#9ca3af';
+        break;
+      case 'checkpoint':
+        ctx.fillStyle = '#f59e0b'; // Orange
+        ctx.strokeStyle = '#d97706';
+        break;
+      case 'exit':
+        ctx.fillStyle = '#10b981'; // Green
+        ctx.strokeStyle = '#059669';
+        break;
+    }
+
+    // Draw node
+    ctx.beginPath();
+    if (node.type === 'exit') {
+      // Exits are larger rectangles
+      ctx.fillRect(x - 15, y - 10, 30, 20);
+      ctx.strokeRect(x - 15, y - 10, 30, 20);
+    } else if (node.type === 'gate') {
+      // Gates are small squares
+      ctx.fillRect(x - 8, y - 8, 16, 16);
+      ctx.strokeRect(x - 8, y - 8, 16, 16);
+    } else {
+      // Corridors and checkpoints are circles
+      ctx.arc(x, y, node.type === 'checkpoint' ? 12 : 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Label
+    ctx.fillStyle = '#000';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(node.id, x, y + 25);
+  };
+
   const drawSimulation = (
     ctx: CanvasRenderingContext2D,
-    metrics: SimulationMetrics,
+    layout: AirportLayout,
+    agents: Agent[],
     offsetX: number,
     isCrowdLeaf: boolean
   ) => {
+    // Draw edges (pathways)
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 3;
+    layout.edges.forEach(edge => {
+      const fromNode = layout.nodes.find(n => n.id === edge.from);
+      const toNode = layout.nodes.find(n => n.id === edge.to);
+      if (fromNode && toNode) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX + fromNode.x, fromNode.y);
+        ctx.lineTo(offsetX + toNode.x, toNode.y);
+        ctx.stroke();
+      }
+    });
+
+    // Draw nodes (gates, corridors, checkpoints, exits)
+    layout.nodes.forEach(node => {
+      drawNode(ctx, node, offsetX);
+    });
+
+    // Draw agents
     const agentColor = isCrowdLeaf ? '#22c55e' : '#ef4444';
-    
-    // Draw agents (simplified)
-    for (let i = 0; i < metrics.agentsEvacuated; i++) {
-      const x = offsetX + Math.random() * (ctx.canvas.width / 2 - 40) + 20;
-      const y = 100 + Math.random() * (ctx.canvas.height - 200);
-      
-      ctx.fillStyle = agentColor;
+    const injuredColor = '#f97316'; // Orange
+
+    agents.forEach(agent => {
+      if (agent.isEvacuated) return; // Don't draw evacuated agents
+
+      const x = offsetX + agent.x;
+      const y = agent.y;
+
+      ctx.fillStyle = agent.isInjured ? injuredColor : agentColor;
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
-    }
+
+      // Add outline for visibility
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Draw legend
+    const legendY = 50;
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+
+    // Gates
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(offsetX + 10, legendY, 12, 12);
+    ctx.fillStyle = '#000';
+    ctx.fillText('Gates', offsetX + 26, legendY + 10);
+
+    // Exits
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(offsetX + 10, legendY + 20, 12, 12);
+    ctx.fillStyle = '#000';
+    ctx.fillText('Exits', offsetX + 26, legendY + 30);
+
+    // Checkpoints
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(offsetX + 16, legendY + 46, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.fillText('Security', offsetX + 26, legendY + 50);
   };
 
   return (
