@@ -17,24 +17,36 @@ export interface Agent {
   isInjured: boolean;
 }
 
-export interface Node {
-  id: string;
+export interface Wall {
   x: number;
   y: number;
-  type: 'gate' | 'corridor' | 'exit' | 'checkpoint';
-  capacity: number;
+  width: number;
+  height: number;
 }
 
-export interface Edge {
-  from: string;
-  to: string;
+export interface Gate {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+}
+
+export interface Exit {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
 }
 
 export interface AirportLayout {
-  nodes: Node[];
-  edges: Edge[];
+  walls: Wall[];
+  gates: Gate[];
+  exits: Exit[];
   width: number;
   height: number;
+  spawnAreas: { x: number; y: number; width: number; height: number }[];
 }
 
 interface SimulationState {
@@ -46,194 +58,270 @@ interface SimulationState {
   layout: AirportLayout;
 }
 
-// Airport layouts based on real terminal structures
+// Airport floor plans with walls, corridors, gates, and exits
 const airportLayouts: Record<string, AirportLayout> = {
   DFW: {
     width: 600,
     height: 500,
-    nodes: [
-      // Gates (top row)
-      { id: 'G1', x: 100, y: 80, type: 'gate', capacity: 50 },
-      { id: 'G2', x: 200, y: 80, type: 'gate', capacity: 50 },
-      { id: 'G3', x: 300, y: 80, type: 'gate', capacity: 50 },
-      { id: 'G4', x: 400, y: 80, type: 'gate', capacity: 50 },
-      { id: 'G5', x: 500, y: 80, type: 'gate', capacity: 50 },
+    walls: [
+      // Outer boundary walls
+      { x: 10, y: 10, width: 580, height: 5 }, // Top wall
+      { x: 10, y: 10, width: 5, height: 480 }, // Left wall
+      { x: 585, y: 10, width: 5, height: 480 }, // Right wall
 
-      // Main corridor (middle)
-      { id: 'C1', x: 100, y: 200, type: 'corridor', capacity: 80 },
-      { id: 'C2', x: 250, y: 200, type: 'corridor', capacity: 80 },
-      { id: 'C3', x: 400, y: 200, type: 'corridor', capacity: 80 },
-      { id: 'C4', x: 550, y: 200, type: 'corridor', capacity: 80 },
+      // Gate dividers (top section)
+      { x: 120, y: 10, width: 5, height: 80 },
+      { x: 230, y: 10, width: 5, height: 80 },
+      { x: 340, y: 10, width: 5, height: 80 },
+      { x: 450, y: 10, width: 5, height: 80 },
 
-      // Security checkpoint
-      { id: 'S1', x: 180, y: 320, type: 'checkpoint', capacity: 40 },
-      { id: 'S2', x: 420, y: 320, type: 'checkpoint', capacity: 40 },
+      // Horizontal wall below gates
+      { x: 10, y: 120, width: 580, height: 5 },
 
-      // Exits (bottom)
-      { id: 'E1', x: 150, y: 440, type: 'exit', capacity: 100 },
-      { id: 'E2', x: 300, y: 440, type: 'exit', capacity: 100 },
-      { id: 'E3', x: 450, y: 440, type: 'exit', capacity: 100 },
+      // Corridor walls creating main pathway
+      { x: 10, y: 200, width: 580, height: 5 }, // Upper corridor boundary
+      { x: 10, y: 280, width: 580, height: 5 }, // Lower corridor boundary
+
+      // Security checkpoint narrow passages
+      { x: 10, y: 280, width: 140, height: 5 },
+      { x: 190, y: 280, width: 5, height: 70 },
+      { x: 250, y: 280, width: 5, height: 70 },
+      { x: 350, y: 280, width: 5, height: 70 },
+      { x: 410, y: 280, width: 5, height: 70 },
+      { x: 450, y: 280, width: 140, height: 5 },
     ],
-    edges: [
-      // Gates to corridors
-      { from: 'G1', to: 'C1' }, { from: 'G2', to: 'C2' }, { from: 'G3', to: 'C2' },
-      { from: 'G4', to: 'C3' }, { from: 'G5', to: 'C4' },
-
-      // Corridor connections
-      { from: 'C1', to: 'C2' }, { from: 'C2', to: 'C3' }, { from: 'C3', to: 'C4' },
-
-      // Corridors to checkpoints
-      { from: 'C1', to: 'S1' }, { from: 'C2', to: 'S1' },
-      { from: 'C3', to: 'S2' }, { from: 'C4', to: 'S2' },
-
-      // Checkpoints to exits
-      { from: 'S1', to: 'E1' }, { from: 'S1', to: 'E2' },
-      { from: 'S2', to: 'E2' }, { from: 'S2', to: 'E3' },
+    gates: [
+      { x: 15, y: 15, width: 100, height: 100, label: 'G1' },
+      { x: 125, y: 15, width: 100, height: 100, label: 'G2' },
+      { x: 235, y: 15, width: 100, height: 100, label: 'G3' },
+      { x: 345, y: 15, width: 100, height: 100, label: 'G4' },
+      { x: 455, y: 15, width: 130, height: 100, label: 'G5' },
+    ],
+    exits: [
+      { x: 50, y: 450, width: 120, height: 40, label: 'Exit 1' },
+      { x: 240, y: 450, width: 120, height: 40, label: 'Exit 2' },
+      { x: 430, y: 450, width: 120, height: 40, label: 'Exit 3' },
+    ],
+    spawnAreas: [
+      { x: 20, y: 30, width: 90, height: 80 },
+      { x: 130, y: 30, width: 90, height: 80 },
+      { x: 240, y: 30, width: 90, height: 80 },
+      { x: 350, y: 30, width: 90, height: 80 },
+      { x: 460, y: 30, width: 120, height: 80 },
     ],
   },
   ATL: {
     width: 600,
     height: 500,
-    nodes: [
-      // Gates (larger terminal)
-      { id: 'G1', x: 80, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G2', x: 160, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G3', x: 240, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G4', x: 320, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G5', x: 400, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G6', x: 480, y: 70, type: 'gate', capacity: 60 },
-      { id: 'G7', x: 560, y: 70, type: 'gate', capacity: 60 },
+    walls: [
+      // Outer walls
+      { x: 10, y: 10, width: 580, height: 5 },
+      { x: 10, y: 10, width: 5, height: 480 },
+      { x: 585, y: 10, width: 5, height: 480 },
 
-      // Corridors
-      { id: 'C1', x: 120, y: 180, type: 'corridor', capacity: 100 },
-      { id: 'C2', x: 300, y: 180, type: 'corridor', capacity: 100 },
-      { id: 'C3', x: 480, y: 180, type: 'corridor', capacity: 100 },
-      { id: 'C4', x: 300, y: 280, type: 'corridor', capacity: 100 },
+      // Gate dividers (7 gates)
+      { x: 90, y: 10, width: 5, height: 70 },
+      { x: 170, y: 10, width: 5, height: 70 },
+      { x: 250, y: 10, width: 5, height: 70 },
+      { x: 330, y: 10, width: 5, height: 70 },
+      { x: 410, y: 10, width: 5, height: 70 },
+      { x: 490, y: 10, width: 5, height: 70 },
 
-      // Checkpoints
-      { id: 'S1', x: 200, y: 360, type: 'checkpoint', capacity: 50 },
-      { id: 'S2', x: 400, y: 360, type: 'checkpoint', capacity: 50 },
+      // Horizontal separator
+      { x: 10, y: 110, width: 580, height: 5 },
 
-      // Exits
-      { id: 'E1', x: 180, y: 450, type: 'exit', capacity: 120 },
-      { id: 'E2', x: 420, y: 450, type: 'exit', capacity: 120 },
+      // Main corridor walls
+      { x: 10, y: 190, width: 580, height: 5 },
+      { x: 10, y: 270, width: 580, height: 5 },
+
+      // Narrow security checkpoints
+      { x: 10, y: 350, width: 150, height: 5 },
+      { x: 200, y: 350, width: 5, height: 60 },
+      { x: 260, y: 350, width: 5, height: 60 },
+      { x: 340, y: 350, width: 5, height: 60 },
+      { x: 400, y: 350, width: 5, height: 60 },
+      { x: 440, y: 350, width: 150, height: 5 },
     ],
-    edges: [
-      { from: 'G1', to: 'C1' }, { from: 'G2', to: 'C1' }, { from: 'G3', to: 'C2' },
-      { from: 'G4', to: 'C2' }, { from: 'G5', to: 'C2' }, { from: 'G6', to: 'C3' },
-      { from: 'G7', to: 'C3' },
-      { from: 'C1', to: 'C2' }, { from: 'C2', to: 'C3' },
-      { from: 'C1', to: 'C4' }, { from: 'C2', to: 'C4' }, { from: 'C3', to: 'C4' },
-      { from: 'C4', to: 'S1' }, { from: 'C4', to: 'S2' },
-      { from: 'S1', to: 'E1' }, { from: 'S2', to: 'E2' },
+    gates: [
+      { x: 15, y: 15, width: 70, height: 90, label: 'A1' },
+      { x: 95, y: 15, width: 70, height: 90, label: 'A2' },
+      { x: 175, y: 15, width: 70, height: 90, label: 'A3' },
+      { x: 255, y: 15, width: 70, height: 90, label: 'A4' },
+      { x: 335, y: 15, width: 70, height: 90, label: 'A5' },
+      { x: 415, y: 15, width: 70, height: 90, label: 'A6' },
+      { x: 495, y: 15, width: 90, height: 90, label: 'A7' },
+    ],
+    exits: [
+      { x: 100, y: 450, width: 150, height: 40, label: 'Exit A' },
+      { x: 350, y: 450, width: 150, height: 40, label: 'Exit B' },
+    ],
+    spawnAreas: [
+      { x: 20, y: 20, width: 65, height: 80 },
+      { x: 100, y: 20, width: 65, height: 80 },
+      { x: 180, y: 20, width: 65, height: 80 },
+      { x: 260, y: 20, width: 65, height: 80 },
+      { x: 340, y: 20, width: 65, height: 80 },
+      { x: 420, y: 20, width: 65, height: 80 },
+      { x: 500, y: 20, width: 80, height: 80 },
     ],
   },
   DXB: {
     width: 600,
     height: 500,
-    nodes: [
-      // Gates
-      { id: 'G1', x: 100, y: 60, type: 'gate', capacity: 70 },
-      { id: 'G2', x: 220, y: 60, type: 'gate', capacity: 70 },
-      { id: 'G3', x: 340, y: 60, type: 'gate', capacity: 70 },
-      { id: 'G4', x: 460, y: 60, type: 'gate', capacity: 70 },
-      { id: 'G5', x: 100, y: 140, type: 'gate', capacity: 70 },
-      { id: 'G6', x: 220, y: 140, type: 'gate', capacity: 70 },
-      { id: 'G7', x: 340, y: 140, type: 'gate', capacity: 70 },
-      { id: 'G8', x: 460, y: 140, type: 'gate', capacity: 70 },
+    walls: [
+      // Outer boundary
+      { x: 10, y: 10, width: 580, height: 5 },
+      { x: 10, y: 10, width: 5, height: 480 },
+      { x: 585, y: 10, width: 5, height: 480 },
 
-      // Main corridors
-      { id: 'C1', x: 160, y: 240, type: 'corridor', capacity: 120 },
-      { id: 'C2', x: 400, y: 240, type: 'corridor', capacity: 120 },
+      // Two-row gate layout dividers
+      { x: 150, y: 10, width: 5, height: 70 },
+      { x: 290, y: 10, width: 5, height: 70 },
+      { x: 430, y: 10, width: 5, height: 70 },
+      { x: 150, y: 100, width: 5, height: 70 },
+      { x: 290, y: 100, width: 5, height: 70 },
+      { x: 430, y: 100, width: 5, height: 70 },
 
-      // Checkpoints
-      { id: 'S1', x: 280, y: 340, type: 'checkpoint', capacity: 60 },
+      // Separator after gates
+      { x: 10, y: 190, width: 580, height: 5 },
 
-      // Exits
-      { id: 'E1', x: 200, y: 440, type: 'exit', capacity: 150 },
-      { id: 'E2', x: 360, y: 440, type: 'exit', capacity: 150 },
+      // Wide corridor
+      { x: 10, y: 270, width: 580, height: 5 },
+
+      // Single central checkpoint
+      { x: 10, y: 350, width: 210, height: 5 },
+      { x: 260, y: 350, width: 5, height: 60 },
+      { x: 335, y: 350, width: 5, height: 60 },
+      { x: 380, y: 350, width: 210, height: 5 },
     ],
-    edges: [
-      { from: 'G1', to: 'C1' }, { from: 'G2', to: 'C1' }, { from: 'G3', to: 'C2' },
-      { from: 'G4', to: 'C2' }, { from: 'G5', to: 'C1' }, { from: 'G6', to: 'C1' },
-      { from: 'G7', to: 'C2' }, { from: 'G8', to: 'C2' },
-      { from: 'C1', to: 'C2' }, { from: 'C1', to: 'S1' }, { from: 'C2', to: 'S1' },
-      { from: 'S1', to: 'E1' }, { from: 'S1', to: 'E2' },
+    gates: [
+      { x: 15, y: 15, width: 130, height: 60, label: 'D1' },
+      { x: 155, y: 15, width: 130, height: 60, label: 'D2' },
+      { x: 295, y: 15, width: 130, height: 60, label: 'D3' },
+      { x: 435, y: 15, width: 150, height: 60, label: 'D4' },
+      { x: 15, y: 105, width: 130, height: 60, label: 'D5' },
+      { x: 155, y: 105, width: 130, height: 60, label: 'D6' },
+      { x: 295, y: 105, width: 130, height: 60, label: 'D7' },
+      { x: 435, y: 105, width: 150, height: 60, label: 'D8' },
+    ],
+    exits: [
+      { x: 120, y: 450, width: 160, height: 40, label: 'Exit 1' },
+      { x: 320, y: 450, width: 160, height: 40, label: 'Exit 2' },
+    ],
+    spawnAreas: [
+      { x: 20, y: 20, width: 120, height: 50 },
+      { x: 160, y: 20, width: 120, height: 50 },
+      { x: 300, y: 20, width: 120, height: 50 },
+      { x: 440, y: 20, width: 140, height: 50 },
+      { x: 20, y: 110, width: 120, height: 50 },
+      { x: 160, y: 110, width: 120, height: 50 },
+      { x: 300, y: 110, width: 120, height: 50 },
+      { x: 440, y: 110, width: 140, height: 50 },
     ],
   },
   DEL: {
     width: 600,
     height: 500,
-    nodes: [
-      // Gates
-      { id: 'G1', x: 120, y: 80, type: 'gate', capacity: 55 },
-      { id: 'G2', x: 240, y: 80, type: 'gate', capacity: 55 },
-      { id: 'G3', x: 360, y: 80, type: 'gate', capacity: 55 },
-      { id: 'G4', x: 480, y: 80, type: 'gate', capacity: 55 },
+    walls: [
+      // Outer walls
+      { x: 10, y: 10, width: 580, height: 5 },
+      { x: 10, y: 10, width: 5, height: 480 },
+      { x: 585, y: 10, width: 5, height: 480 },
 
-      // Corridors
-      { id: 'C1', x: 180, y: 200, type: 'corridor', capacity: 90 },
-      { id: 'C2', x: 420, y: 200, type: 'corridor', capacity: 90 },
-      { id: 'C3', x: 300, y: 280, type: 'corridor', capacity: 90 },
+      // Gate dividers
+      { x: 160, y: 10, width: 5, height: 85 },
+      { x: 310, y: 10, width: 5, height: 85 },
+      { x: 460, y: 10, width: 5, height: 85 },
 
-      // Checkpoints
-      { id: 'S1', x: 220, y: 360, type: 'checkpoint', capacity: 45 },
-      { id: 'S2', x: 380, y: 360, type: 'checkpoint', capacity: 45 },
+      // Horizontal separator
+      { x: 10, y: 120, width: 580, height: 5 },
 
-      // Exits
-      { id: 'E1', x: 160, y: 440, type: 'exit', capacity: 110 },
-      { id: 'E2', x: 440, y: 440, type: 'exit', capacity: 110 },
+      // Corridor walls
+      { x: 10, y: 200, width: 580, height: 5 },
+      { x: 10, y: 280, width: 580, height: 5 },
+
+      // Security checkpoints
+      { x: 10, y: 360, width: 160, height: 5 },
+      { x: 210, y: 360, width: 5, height: 60 },
+      { x: 280, y: 360, width: 5, height: 60 },
+      { x: 320, y: 360, width: 5, height: 60 },
+      { x: 390, y: 360, width: 5, height: 60 },
+      { x: 430, y: 360, width: 160, height: 5 },
     ],
-    edges: [
-      { from: 'G1', to: 'C1' }, { from: 'G2', to: 'C1' },
-      { from: 'G3', to: 'C2' }, { from: 'G4', to: 'C2' },
-      { from: 'C1', to: 'C3' }, { from: 'C2', to: 'C3' },
-      { from: 'C3', to: 'S1' }, { from: 'C3', to: 'S2' },
-      { from: 'S1', to: 'E1' }, { from: 'S2', to: 'E2' },
+    gates: [
+      { x: 15, y: 15, width: 140, height: 100, label: 'Gate 1' },
+      { x: 165, y: 15, width: 140, height: 100, label: 'Gate 2' },
+      { x: 315, y: 15, width: 140, height: 100, label: 'Gate 3' },
+      { x: 465, y: 15, width: 120, height: 100, label: 'Gate 4' },
+    ],
+    exits: [
+      { x: 80, y: 450, width: 140, height: 40, label: 'Exit 1' },
+      { x: 380, y: 450, width: 140, height: 40, label: 'Exit 2' },
+    ],
+    spawnAreas: [
+      { x: 20, y: 25, width: 130, height: 85 },
+      { x: 170, y: 25, width: 130, height: 85 },
+      { x: 320, y: 25, width: 130, height: 85 },
+      { x: 470, y: 25, width: 110, height: 85 },
     ],
   },
   IAD: {
     width: 600,
     height: 500,
-    nodes: [
-      // Gates
-      { id: 'G1', x: 100, y: 90, type: 'gate', capacity: 50 },
-      { id: 'G2', x: 250, y: 90, type: 'gate', capacity: 50 },
-      { id: 'G3', x: 400, y: 90, type: 'gate', capacity: 50 },
-      { id: 'G4', x: 500, y: 90, type: 'gate', capacity: 50 },
+    walls: [
+      // Outer boundary
+      { x: 10, y: 10, width: 580, height: 5 },
+      { x: 10, y: 10, width: 5, height: 480 },
+      { x: 585, y: 10, width: 5, height: 480 },
 
-      // Corridors
-      { id: 'C1', x: 175, y: 210, type: 'corridor', capacity: 85 },
-      { id: 'C2', x: 425, y: 210, type: 'corridor', capacity: 85 },
+      // Gate dividers
+      { x: 160, y: 10, width: 5, height: 90 },
+      { x: 310, y: 10, width: 5, height: 90 },
+      { x: 460, y: 10, width: 5, height: 90 },
 
-      // Checkpoints
-      { id: 'S1', x: 300, y: 330, type: 'checkpoint', capacity: 50 },
+      // Separator
+      { x: 10, y: 125, width: 580, height: 5 },
 
-      // Exits
-      { id: 'E1', x: 200, y: 430, type: 'exit', capacity: 100 },
-      { id: 'E2', x: 400, y: 430, type: 'exit', capacity: 100 },
+      // Corridor walls
+      { x: 10, y: 210, width: 580, height: 5 },
+      { x: 10, y: 290, width: 580, height: 5 },
+
+      // Central security checkpoint
+      { x: 10, y: 370, width: 230, height: 5 },
+      { x: 280, y: 370, width: 5, height: 60 },
+      { x: 320, y: 370, width: 5, height: 60 },
+      { x: 360, y: 370, width: 230, height: 5 },
     ],
-    edges: [
-      { from: 'G1', to: 'C1' }, { from: 'G2', to: 'C1' },
-      { from: 'G3', to: 'C2' }, { from: 'G4', to: 'C2' },
-      { from: 'C1', to: 'C2' }, { from: 'C1', to: 'S1' }, { from: 'C2', to: 'S1' },
-      { from: 'S1', to: 'E1' }, { from: 'S1', to: 'E2' },
+    gates: [
+      { x: 15, y: 15, width: 140, height: 105, label: 'Gate 1' },
+      { x: 165, y: 15, width: 140, height: 105, label: 'Gate 2' },
+      { x: 315, y: 15, width: 140, height: 105, label: 'Gate 3' },
+      { x: 465, y: 15, width: 120, height: 105, label: 'Gate 4' },
+    ],
+    exits: [
+      { x: 110, y: 450, width: 160, height: 40, label: 'Exit 1' },
+      { x: 330, y: 450, width: 160, height: 40, label: 'Exit 2' },
+    ],
+    spawnAreas: [
+      { x: 20, y: 25, width: 130, height: 90 },
+      { x: 170, y: 25, width: 130, height: 90 },
+      { x: 320, y: 25, width: 130, height: 90 },
+      { x: 470, y: 25, width: 110, height: 90 },
     ],
   },
 };
 
-// Initialize agents at gates
+// Initialize agents in spawn areas
 function initializeAgents(layout: AirportLayout, count: number): Agent[] {
   const agents: Agent[] = [];
-  const gates = layout.nodes.filter(n => n.type === 'gate');
 
   for (let i = 0; i < count; i++) {
-    const gate = gates[i % gates.length];
+    const spawnArea = layout.spawnAreas[i % layout.spawnAreas.length];
     agents.push({
       id: i,
-      x: gate.x + (Math.random() - 0.5) * 30,
-      y: gate.y + (Math.random() - 0.5) * 20,
-      targetNode: gate.id,
+      x: spawnArea.x + Math.random() * spawnArea.width,
+      y: spawnArea.y + Math.random() * spawnArea.height,
+      targetNode: '', // Not used in spatial simulation
       isEvacuated: false,
       isDead: false,
       isInjured: false,
@@ -243,31 +331,88 @@ function initializeAgents(layout: AirportLayout, count: number): Agent[] {
   return agents;
 }
 
-// Get next node towards exits
-function getNextNode(
-  currentNode: string,
-  layout: AirportLayout,
-  useCrowdLeaf: boolean,
-  time: number
-): string {
-  const edges = layout.edges.filter(e => e.from === currentNode);
-  if (edges.length === 0) return currentNode;
-
-  if (useCrowdLeaf) {
-    // CrowdLeaf: Balance load across exits, avoid overcrowding
-    // Timed gate control: periodically redirect to less crowded paths
-    const redirectPhase = Math.floor(time / 5) % 3;
-    if (redirectPhase === 1 && edges.length > 1) {
-      // Redirect to alternative path
-      return edges[Math.floor(Math.random() * edges.length)].to;
+// Check collision with walls
+function checkWallCollision(x: number, y: number, walls: Wall[], radius: number = 4): boolean {
+  for (const wall of walls) {
+    if (
+      x + radius > wall.x &&
+      x - radius < wall.x + wall.width &&
+      y + radius > wall.y &&
+      y - radius < wall.y + wall.height
+    ) {
+      return true;
     }
   }
-
-  // Default: nearest exit
-  return edges[0].to;
+  return false;
 }
 
-// Update agent positions
+// Check if agent is in exit area
+function isInExit(x: number, y: number, exits: Exit[]): boolean {
+  for (const exit of exits) {
+    if (
+      x >= exit.x &&
+      x <= exit.x + exit.width &&
+      y >= exit.y &&
+      y <= exit.y + exit.height
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Get target exit for agent (CrowdLeaf redistributes, standard picks nearest)
+function getTargetExit(
+  agent: Agent,
+  layout: AirportLayout,
+  allAgents: Agent[],
+  useCrowdLeaf: boolean,
+  time: number
+): Exit {
+  if (useCrowdLeaf) {
+    // CrowdLeaf: Timed gate control - periodically redirect to less crowded exit
+    const redirectPhase = Math.floor(time / 5) % layout.exits.length;
+
+    // Count agents heading to each exit
+    const exitCounts = layout.exits.map(exit => {
+      return allAgents.filter(a => {
+        const dx = a.x - (exit.x + exit.width / 2);
+        const dy = a.y - (exit.y + exit.height / 2);
+        return Math.sqrt(dx * dx + dy * dy) < 100;
+      }).length;
+    });
+
+    // Find least crowded exit
+    let minIndex = 0;
+    for (let i = 1; i < exitCounts.length; i++) {
+      if (exitCounts[i] < exitCounts[minIndex]) {
+        minIndex = i;
+      }
+    }
+
+    // Balance between least crowded and timed redirect
+    return Math.random() < 0.7 ? layout.exits[minIndex] : layout.exits[redirectPhase];
+  } else {
+    // Standard: Always go to nearest exit
+    let nearest = layout.exits[0];
+    let minDist = Infinity;
+
+    for (const exit of layout.exits) {
+      const dx = agent.x - (exit.x + exit.width / 2);
+      const dy = agent.y - (exit.y + exit.height / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = exit;
+      }
+    }
+
+    return nearest;
+  }
+}
+
+// Update agent positions with collision detection
 function updateAgents(
   agents: Agent[],
   layout: AirportLayout,
@@ -275,40 +420,74 @@ function updateAgents(
   time: number,
   deltaTime: number
 ): Agent[] {
-  const exits = layout.nodes.filter(n => n.type === 'exit');
-
   return agents.map(agent => {
     if (agent.isEvacuated) return agent;
 
-    // Get target node
-    const targetNode = layout.nodes.find(n => n.id === agent.targetNode);
-    if (!targetNode) return agent;
-
-    // Move towards target
-    const dx = targetNode.x - agent.x;
-    const dy = targetNode.y - agent.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist < 10) {
-      // Reached target node
-      if (targetNode.type === 'exit') {
-        return { ...agent, isEvacuated: true };
-      }
-
-      // Get next node
-      const nextNodeId = getNextNode(agent.targetNode, layout, useCrowdLeaf, time);
-      return { ...agent, targetNode: nextNodeId };
+    // Check if reached exit
+    if (isInExit(agent.x, agent.y, layout.exits)) {
+      return { ...agent, isEvacuated: true };
     }
 
-    // Move towards target
-    const speed = useCrowdLeaf ? 2.5 : 2.0; // CrowdLeaf slightly faster
-    const vx = (dx / dist) * speed;
-    const vy = (dy / dist) * speed;
+    // Get target exit
+    const targetExit = getTargetExit(agent, layout, agents, useCrowdLeaf, time);
+    const targetX = targetExit.x + targetExit.width / 2;
+    const targetY = targetExit.y + targetExit.height / 2;
+
+    // Calculate movement direction
+    const dx = targetX - agent.x;
+    const dy = targetY - agent.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 5) return agent; // Already at target
+
+    // Movement speed (CrowdLeaf slightly better flow)
+    const baseSpeed = useCrowdLeaf ? 2.8 : 2.2;
+    const vx = (dx / dist) * baseSpeed;
+    const vy = (dy / dist) * baseSpeed;
+
+    let newX = agent.x + vx;
+    let newY = agent.y + vy;
+
+    // Collision detection with walls
+    if (checkWallCollision(newX, newY, layout.walls)) {
+      // Try sliding along walls
+      if (!checkWallCollision(agent.x, newY, layout.walls)) {
+        newX = agent.x; // Slide vertically
+      } else if (!checkWallCollision(newX, agent.y, layout.walls)) {
+        newY = agent.y; // Slide horizontally
+      } else {
+        // Can't move, add some randomness to escape
+        newX = agent.x + (Math.random() - 0.5) * 2;
+        newY = agent.y + (Math.random() - 0.5) * 2;
+
+        // Check again
+        if (checkWallCollision(newX, newY, layout.walls)) {
+          newX = agent.x;
+          newY = agent.y;
+        }
+      }
+    }
+
+    // Agent-agent collision (simple repulsion)
+    for (const other of agents) {
+      if (other.id !== agent.id && !other.isEvacuated) {
+        const odx = newX - other.x;
+        const ody = newY - other.y;
+        const oDist = Math.sqrt(odx * odx + ody * ody);
+
+        if (oDist < 8 && oDist > 0) {
+          // Push apart
+          const pushForce = (8 - oDist) * 0.3;
+          newX += (odx / oDist) * pushForce;
+          newY += (ody / oDist) * pushForce;
+        }
+      }
+    }
 
     return {
       ...agent,
-      x: agent.x + vx,
-      y: agent.y + vy,
+      x: newX,
+      y: newY,
     };
   });
 }
