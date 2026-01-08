@@ -4,16 +4,16 @@ import { useState } from 'react';
 import CrowdLeafSimulator from '@/components/CrowdLeafSimulator';
 
 export default function Home() {
-  const [selectedAirport, setSelectedAirport] = useState('DFW');
-  const [agentCount, setAgentCount] = useState(500);
+  const [selectedAirport, setSelectedAirport] = useState('ATL');
+  const [agentCount, setAgentCount] = useState(650);
   const [isRunning, setIsRunning] = useState(false);
 
   const airports = [
-    { id: 'DFW', name: 'Dallas/Fort Worth (DFW) Terminal D - 14 Gates', agents: 500 },
-    { id: 'ATL', name: 'Atlanta Hartsfield-Jackson (ATL) Concourse T - 20 Gates', agents: 650 },
-    { id: 'DXB', name: 'Dubai International (DXB) Terminal 3 - 22 Gates', agents: 800 },
-    { id: 'DEL', name: 'Delhi Indira Gandhi (DEL) Terminal 3 - 18 Gates', agents: 700 },
-    { id: 'IAD', name: 'Washington Dulles (IAD) Concourse C/D - 10 Gates', agents: 450 },
+    { id: 'ATL', name: 'Atlanta (ATL) Concourse T - International', agents: 650 },
+    { id: 'ORD', name: 'Chicago O\'Hare (ORD) Terminal 5', agents: 700 },
+    { id: 'DXB', name: 'Dubai (DXB) Terminal 3 Concourse A', agents: 900 },
+    { id: 'IAH', name: 'Houston (IAH) Terminal E - International', agents: 600 },
+    { id: 'IAD', name: 'Washington Dulles (IAD) Concourse C', agents: 500 },
   ];
 
   return (
