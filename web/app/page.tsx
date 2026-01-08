@@ -5,15 +5,15 @@ import CrowdLeafSimulator from '@/components/CrowdLeafSimulator';
 
 export default function Home() {
   const [selectedAirport, setSelectedAirport] = useState('DFW');
-  const [agentCount, setAgentCount] = useState(300);
+  const [agentCount, setAgentCount] = useState(500);
   const [isRunning, setIsRunning] = useState(false);
 
   const airports = [
-    { id: 'DFW', name: 'Dallas/Fort Worth Terminal D', agents: 300 },
-    { id: 'ATL', name: 'Atlanta Hartsfield-Jackson', agents: 400 },
-    { id: 'DXB', name: 'Dubai International Terminal 3', agents: 500 },
-    { id: 'DEL', name: 'Delhi Indira Gandhi Terminal 3', agents: 350 },
-    { id: 'IAD', name: 'Washington Dulles', agents: 300 },
+    { id: 'DFW', name: 'Dallas/Fort Worth (DFW) Terminal D - 14 Gates', agents: 500 },
+    { id: 'ATL', name: 'Atlanta Hartsfield-Jackson (ATL) Concourse T - 20 Gates', agents: 650 },
+    { id: 'DXB', name: 'Dubai International (DXB) Terminal 3 - 22 Gates', agents: 800 },
+    { id: 'DEL', name: 'Delhi Indira Gandhi (DEL) Terminal 3 - 18 Gates', agents: 700 },
+    { id: 'IAD', name: 'Washington Dulles (IAD) Concourse C/D - 10 Gates', agents: 450 },
   ];
 
   return (
@@ -59,20 +59,20 @@ export default function Home() {
             {/* Agent Count Slider */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Number of Agents: {agentCount}
+                Number of Passengers: {agentCount}
               </label>
               <input
                 type="range"
-                min="50"
-                max="1000"
+                min="100"
+                max="1500"
                 step="50"
                 value={agentCount}
                 onChange={(e) => setAgentCount(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>50</span>
-                <span>1000</span>
+                <span>100</span>
+                <span>1500</span>
               </div>
             </div>
 
@@ -124,12 +124,12 @@ export default function Home() {
         {/* Research Info */}
         <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            🔬 Scientific Background
+            🔬 Scientific Background & Features
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             <div>
               <h3 className="font-semibold text-green-700 mb-2">
-                Mathematical Models Implemented
+                Mathematical Models
               </h3>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li>
@@ -147,15 +147,27 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-green-700 mb-2">
-                Key Features
+              <h3 className="font-semibold text-blue-700 mb-2">
+                Real Terminal Layouts
               </h3>
               <ul className="space-y-2 text-sm text-gray-700">
-                <li>✅ Reduces chokepoint formation</li>
-                <li>✅ Prevents rush to nearest exit</li>
-                <li>✅ Frugal - no expensive CCTV analytics needed</li>
-                <li>✅ Recovery dynamics (~15 min like Mimosa pudica)</li>
-                <li>✅ Real-time adaptive crowd dispersal</li>
+                <li>✈️ <strong>DFW Terminal D:</strong> 14 international gates, 5 exits</li>
+                <li>✈️ <strong>ATL Concourse T:</strong> 20 gates, dual-row layout</li>
+                <li>✈️ <strong>DXB Terminal 3:</strong> 22 gates, massive duty-free area</li>
+                <li>✈️ <strong>DEL Terminal 3:</strong> 18 gates, multi-security layout</li>
+                <li>✈️ <strong>IAD Concourse C/D:</strong> 10 gates, AeroTrain station</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-purple-700 mb-2">
+                Visualization Features
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li>🌡️ <strong>Heatmap:</strong> White → Yellow → Orange → Red density gradient</li>
+                <li>🏢 <strong>Terminal Features:</strong> Gates, security, shops, baggage claims</li>
+                <li>👥 <strong>Crowd Flow:</strong> Real-time agent-based simulation</li>
+                <li>📊 <strong>Data-Driven:</strong> Based on actual airport layouts</li>
+                <li>🎯 <strong>CrowdLeaf Control:</strong> Adaptive exit management</li>
               </ul>
             </div>
           </div>
