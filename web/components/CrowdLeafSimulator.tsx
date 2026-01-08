@@ -388,8 +388,8 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
       <div className="mb-6">
         <canvas
           ref={canvasRef}
-          width={2000}
-          height={800}
+          width={2200}
+          height={400}
           className="w-full border-2 border-gray-300 rounded-lg"
         />
       </div>
@@ -398,28 +398,28 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
       <div className="grid md:grid-cols-2 gap-6">
         {/* Without CrowdLeaf */}
         <div className="bg-red-50 rounded-lg p-4 border-2 border-red-200">
-          <h3 className="font-bold text-red-800 mb-3">❌ Without CrowdLeaf</h3>
+          <h3 className="font-bold text-red-800 mb-3 text-lg">❌ Without CrowdLeaf</h3>
           {metricsWithout && (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm text-gray-800">
               <div className="flex justify-between">
-                <span>Time:</span>
-                <span className="font-semibold">{metricsWithout.time.toFixed(1)}s</span>
+                <span className="font-medium text-gray-700">Time:</span>
+                <span className="font-bold text-gray-900">{metricsWithout.time.toFixed(1)}s</span>
               </div>
               <div className="flex justify-between">
-                <span>Injuries:</span>
-                <span className="font-semibold text-orange-600">{metricsWithout.injuries}</span>
+                <span className="font-medium text-gray-700">Injuries:</span>
+                <span className="font-bold text-orange-700">{metricsWithout.injuries}</span>
               </div>
               <div className="flex justify-between">
-                <span>Deaths:</span>
-                <span className="font-semibold text-red-600">{metricsWithout.deaths}</span>
+                <span className="font-medium text-gray-700">Deaths:</span>
+                <span className="font-bold text-red-700">{metricsWithout.deaths}</span>
               </div>
               <div className="flex justify-between">
-                <span>Avg Density:</span>
-                <span className="font-semibold">{metricsWithout.avgDensity.toFixed(2)} p/m²</span>
+                <span className="font-medium text-gray-700">Avg Density:</span>
+                <span className="font-bold text-gray-900">{metricsWithout.avgDensity.toFixed(2)} p/m²</span>
               </div>
               <div className="flex justify-between">
-                <span>Evacuated:</span>
-                <span className="font-semibold text-green-600">{metricsWithout.agentsEvacuated}</span>
+                <span className="font-medium text-gray-700">Evacuated:</span>
+                <span className="font-bold text-green-700">{metricsWithout.agentsEvacuated}</span>
               </div>
             </div>
           )}
@@ -427,28 +427,28 @@ export default function CrowdLeafSimulator({ airport, agentCount, isRunning }: P
 
         {/* With CrowdLeaf */}
         <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
-          <h3 className="font-bold text-green-800 mb-3">✅ With CrowdLeaf</h3>
+          <h3 className="font-bold text-green-800 mb-3 text-lg">✅ With CrowdLeaf</h3>
           {metricsWith && (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm text-gray-800">
               <div className="flex justify-between">
-                <span>Time:</span>
-                <span className="font-semibold">{metricsWith.time.toFixed(1)}s</span>
+                <span className="font-medium text-gray-700">Time:</span>
+                <span className="font-bold text-gray-900">{metricsWith.time.toFixed(1)}s</span>
               </div>
               <div className="flex justify-between">
-                <span>Injuries:</span>
-                <span className="font-semibold text-orange-600">{metricsWith.injuries}</span>
+                <span className="font-medium text-gray-700">Injuries:</span>
+                <span className="font-bold text-orange-700">{metricsWith.injuries}</span>
               </div>
               <div className="flex justify-between">
-                <span>Deaths:</span>
-                <span className="font-semibold text-red-600">{metricsWith.deaths}</span>
+                <span className="font-medium text-gray-700">Deaths:</span>
+                <span className="font-bold text-red-700">{metricsWith.deaths}</span>
               </div>
               <div className="flex justify-between">
-                <span>Avg Density:</span>
-                <span className="font-semibold">{metricsWith.avgDensity.toFixed(2)} p/m²</span>
+                <span className="font-medium text-gray-700">Avg Density:</span>
+                <span className="font-bold text-gray-900">{metricsWith.avgDensity.toFixed(2)} p/m²</span>
               </div>
               <div className="flex justify-between">
-                <span>Evacuated:</span>
-                <span className="font-semibold text-green-600">{metricsWith.agentsEvacuated}</span>
+                <span className="font-medium text-gray-700">Evacuated:</span>
+                <span className="font-bold text-green-700">{metricsWith.agentsEvacuated}</span>
               </div>
             </div>
           )}
